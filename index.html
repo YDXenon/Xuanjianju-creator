@@ -9,9 +9,39 @@
     body{background:#fff;padding:20px;color:#222}
     .container{max-width:1000px;margin:0 auto}
     .title{text-align:center;font-size:30px;font-weight:700;margin-bottom:20px;color:#003c7d}
-    .btn-box{text-align:center;margin-bottom:24px}
+    .btn-box{text-align:center;margin-bottom:12px}
     .btn{padding:12px 32px;background:#007bff;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer}
     .btn:hover{background:#0056b3}
+
+    /* 10连历史按钮样式 */
+    .history-box{
+        display:flex;
+        flex-wrap:wrap;
+        gap:8px;
+        justify-content:center;
+        margin-bottom:24px;
+    }
+    .history-btn{
+        width:90px;
+        height:90px;
+        border-radius:6px;
+        border:none;
+        color:#222;
+        font-size:12px;
+        line-height:1.3;
+        padding:6px;
+        cursor:pointer;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        text-align:center;
+        word-break:break-word;
+    }
+    .history-btn:hover{opacity:0.8}
+    .history-gray{background:#cccccc;color:#333}
+    .history-yellow{background:#ffcc00;color:#222}
+    .history-red{background:#dc3545;color:#fff}
+
     .download-btn{position:fixed;right:20px;bottom:20px;padding:14px 26px;background:#ffcc00;color:#222;border:none;border-radius:10px;font-size:16px;font:bold;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:999}
     .download-btn:hover{background:#ffdd33}
     .top-row{display:flex;gap:20px;margin-bottom:30px}
@@ -21,15 +51,16 @@
     td{padding:9px 0;border-bottom:1px solid #f0f0f0;font-size:15px}
     .label{font-weight:600;width:130px}
     .red{color:#dc3545}
-    .weapon-name{margin-top:20px;font-size:22px;font-weight:bold;text-align:center}
-    .desc{margin-top:12px;font-size:14px;line-height:1.6;font-style:italic;color:#444}
+    .weapon-name{margin-top:20px;font-size:24px;font-weight:bold;text-align:center}
+    .desc{margin-top:16px;font-size:14px;line-height:1.6;font-style:italic;color:#444}
     .chart-box{max-width:550px;margin:0 auto;position:relative;height:500px;margin-bottom:20px}
     canvas{width:100%;height:100%}
-    .dot{position:absolute;width:14px;height:14px;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none}
+    .dot{position:absolute;width:16px;height:16px;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none}
     .dot-red{background:#e53e3e}
     .dot-blue{background:#3182ce}
     .dot-green{background:#38a169}
-    .legend{display:flex;justify-content:center;gap:40px;margin-top:12px;font-size:14px;text-align:center}
+    .legend{display:flex;justify-content:center;gap:40px;margin-top:48px;font-size:14px;text-align:center;line-height:1.8}
+.legend-item{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:30px}
     .legend-item{display:flex;flex-direction:column;align-items:center;gap:4px}
     .label-text{position:absolute;font-weight:bold;font-size:15px;transform:translate(-50%,-50%);white-space:nowrap;text-align:center}
     @media(max-width:768px){.top-row{flex-direction:column}}
@@ -42,7 +73,13 @@
 
 <div class="container" id="fullPage">
     <div class="title">终末地专武装备原件机</div>
-    <div class="btn-box"><button class="btn" onclick="playAndRun()">武库申领</button></div>
+    <div class="btn-box">
+      <button class="btn" onclick="playAndRunBatch()">武库申领</button>
+    </div>
+
+    <!-- 10连结果展示区 -->
+    <div class="history-box" id="historyBox"></div>
+
     <div class="top-row">
         <div class="card">
             <div class="card-title">专武配置</div>
@@ -72,7 +109,6 @@
 <button class="download-btn" onclick="downloadImage()">放置蓝图</button>
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-
 <script>
 const titles = ["武器类型","研发设计方","主材","辅材","施术核心","源石技艺回路","供能模块","造价"];
 const attr5  = ["敏捷","力量","意志","智识","主属性"];
@@ -96,21 +132,168 @@ function g6(){const r=rnd();if(r<=5)return ["坚韧的水",r];if(r<=10)return ["
 function g7(){const r=rnd();if(r<=5)return ["异色油脂",r];if(r<=15)return ["高能异香石",r];if(r<=20)return ["球刺兽的肝脏",r];if(r<=40)return ["低容武陵电池",r];if(r<=50)return ["中容武陵电池",r];if(r<=70)return ["中容谷地电池",r];if(r<=80)return ["高容谷地电池",r];if(r<=85)return ["约翰老爹汉堡",r];if(r<=90)return ["武陵炒饭",r];if(r<=100)return ["协议棱柱组",r];return ["自定义",101];}
 function g8(){const r=rnd();if(r<=10)return ["一文不值",r];if(r<=25)return ["相当廉价",r];if(r<=50)return ["价格亲民",r];if(r<=70)return ["较为贵重",r];if(r<=85)return ["贵重品",r];if(r<=95)return ["极为昂贵",r];if(r<=100)return ["价值连城",r];return ["足以买下整个文明环带",101];}
 
-let realValues = [];
-let names = [];
+let historyList = [];
 
 function playAndRun() {
   clickSound.currentTime = 0;
   clickSound.play().catch(()=>{});
-  run();
+  runSingle();
 }
 
-function run(){
+// 生成10次
+function playAndRunBatch(){
+  clickSound.currentTime = 0;
+  clickSound.play().catch(()=>{});
+  historyList = [];
+  for(let i=0;i<10;i++){
+    const data = runSingle(true);
+    historyList.push(data);
+  }
+  renderHistory();
+  showResult(0);
+}
+
+// 渲染10个历史按钮
+function renderHistory(){
+  const box = document.getElementById("historyBox");
+  box.innerHTML = "";
+  historyList.forEach((item, idx)=>{
+    const btn = document.createElement("button");
+    btn.className = "history-btn";
+    if(item.quality === "净态") btn.classList.add("history-gray");
+    else if(item.quality === "高纯") btn.classList.add("history-yellow");
+    else if(item.quality === "无瑕") btn.classList.add("history-red");
+    btn.innerText = item.weaponName;
+    btn.onclick = ()=> showResult(idx);
+    box.appendChild(btn);
+  });
+}
+
+// 显示指定序号的结果
+function showResult(idx){
+  const item = historyList[idx];
+  if(!item) return;
+  renderTable1(item.names);
+  drawRadar(item.names, item.realValues, item.points);
+  document.getElementById("weaponName").innerText = item.weaponName;
+  document.getElementById("weaponName").style.color = item.color;
+  document.getElementById("desc").innerText = item.desc;
+  document.getElementById("table2").innerHTML = item.table2Html;
+}
+
+// 执行一次生成
+function runSingle(returnData = false){
     const res = [g1(),g2(),g3(),g4(),g5(),g6(),g7(),g8()];
-    names = res.map(x=>x[0]);
-    realValues = res.map(x=>x[1]);
-    renderTable1(names);
-    drawRadar(names, realValues);
+    const names = res.map(x=>x[0]);
+    const realValues = res.map(x=>x[1]);
+    const points = drawRadar(names, realValues);
+    return {names, realValues, points, ...getExtraData(names, realValues, points)};
+}
+
+function getExtraData(names, values, points){
+    const w=canvas.width, h=canvas.height, cx=w/2, cy=h/2;
+    const maxR=Math.min(w,h)*0.38;
+    const scale=maxR/101;
+    const {p1,p2,gx,gy} = points;
+
+    const deg=(x,y)=>{let d=Math.atan2(y-cy,x-cx)*180/Math.PI;return d<0?d+360:d;};
+    const len=(x,y)=>Math.hypot(x-cx,y-cy)/scale;
+    const lv=d=>d<=33?"小":d<=67?"中":"大";
+
+    const rDeg=deg(p1.x,p1.y), rLen=len(p1.x,p1.y), rLv=lv(rLen);
+    const bDeg=deg(p2.x,p2.y), bLen=len(p2.x,p2.y), bLv=lv(bLen);
+    const gDeg=deg(gx,gy);
+
+    const rAttr = attr5[Math.floor((rDeg/360)*5)%5];
+    const bAttr = attr12[Math.floor((bDeg/360)*12)%12];
+    const gSkill = skill14[Math.floor((gDeg/360)*14)%14];
+
+    let quality = "高纯";
+    if(rLv==="小" || bLv==="小") quality="净态";
+    if(rLv==="大" && bLv==="大") quality="无瑕";
+
+    let level;
+    if(quality === "净态"){
+      const arr = ["基础","中端","进阶","制式"];
+      level = arr[Math.floor(Math.random()*arr.length)];
+    } else if(quality === "高纯"){
+      const arr = ["高级","旗舰","客制化","珍贵","定制","古怪","高性能","上等","实验型","优质"];
+      level = arr[Math.floor(Math.random()*arr.length)];
+    } else {
+      const arr = ["经典","热销款","尖端","高端","新一代","特殊","传奇","特殊","实验型","复古","优质","独立","特别"];
+      level = arr[Math.floor(Math.random()*arr.length)];
+    }
+
+    let prefixList;
+    const dev = names[1];
+    if(dev === "终末地工业"){
+      prefixList = ["工业","整合","O.B.J.","矩阵","荒野","塔罗斯","钢铁","寻路者","全自动","荧光","碾骨","脉冲","动火","蚀电","巡行信使","重装信使","矿场","管理员"];
+    } else if(dev === "宏山选剑局"){
+      prefixList = ["宏山","长河","霖雨","云雾","风雷","归舟","武陵","清波","首墩","景玉","点剑","壤流","50式应龙","纾难","长息","浊流","悬河","潮涌","落潮"];
+    } else if(dev === "梅什科工业"){
+      prefixList = ["骑士","典范","呼啸","赤盏","红松","授勋","散华","终点","M.I.警用","布道"];
+    } else if(dev === "北境重工支援所"){
+      prefixList = ["开拓","爆破","喷射","破坏","拓荒"];
+    } else if(dev === "罗德岛"){
+      prefixList = ["生物辅助","源石","协议","Lynx","文明","存续","预言家","博士"];
+    } else if(dev === "轻超域技术实验室"){
+      prefixList = ["轻超域","侵蚀"];
+    } else if(dev === "雷神工业"){
+      prefixList = ["黯淡","绯红","理性"];
+    } else if(dev === "巫术时刻"){
+      prefixList = ["破碎","悼亡","遗忘","熔铸"];
+    } else if(dev === "熔炉要塞"){
+      prefixList = ["白夜","淬火","天使","长路","坚城","使命","光荣"];
+    } else if(dev === "特里格拉夫军工厂"){
+      prefixList = ["天灾防护","阿伯莉"];
+    } else if(dev === "产自荒野"){
+      prefixList = ["九","十二","五","问"];
+    } else {
+      prefixList = ["简易","概念","自定义","测试型","集成化"];
+    }
+    const prefix = prefixList[Math.floor(Math.random() * prefixList.length)];
+
+    let suffixList;
+    const weaponType = names[0];
+    if(weaponType === "施术单元"){
+      suffixList = ["定位仪","分析仪","侵入核","接驳器","通信器","稳定盘","净芯","陀螺","印章","压缩核","单元","作品","星梦","术识","自由","诗歌","荒野","雷羽","新星","精神","12"];
+    } else if(weaponType === "手铳"){
+      suffixList = ["探针","紫光灯","定位信标","传动轮","增压轮","暴君","领航者","告别","长路","守卫","艺术","5"];
+    } else if(weaponType === "单手剑"){
+      suffixList = ["短刀","短刃","刺刃","记忆","火焰","火炬","新星","声名","切割器","之愿","表彰","威势","之至","轻芒","之问","3.0","铸造者","余音","浪潮","之锋","11"];
+    } else if(weaponType === "双手剑"){
+      suffixList = ["切割炬","扳手","冰锥","现象","重荷","之声","之轻","之探","行者","零点一","7"];
+    } else if(weaponType === "长柄武器"){
+      suffixList = ["君王","之勇","之重","精品","之引","尖峰","正义","杀手","道标","77"];
+    } else {
+      suffixList = ["之物","之人","使者","之器","之名","1.0","2.0"];
+    }
+    const suffix = suffixList[Math.floor(Math.random() * suffixList.length)];
+
+    let color;
+    if(quality === "无瑕") color = "#dc3545";
+    else if(quality === "高纯") color = "#ffc107";
+    else if(quality === "净态") color = "#8a2be2";
+    else color = "#222";
+
+    const weaponName = prefix + suffix;
+
+    const items = [];
+    for(let i=2;i<=7;i++){
+      items.push({title:titles[i],value:values[i],name:names[i]});
+    }
+    items.sort((a,b)=>b.value-a.value);
+    const top1=items[0],top2=items[1],top3=items[2];
+    const desc = `由${names[1]}研发设计的${level}${names[0]}，${top1.title}为${top1.name}，${top2.title}为${top2.name}，${top3.title}为${top3.name}。`;
+
+    const table2Html = `
+    <tr><td class="label">品质：</td><td>${quality}</td></tr>
+    <tr><td class="label">基础属性：</td><td>${rAttr}提升·${rLv}</td></tr>
+    <tr><td class="label">附加属性：</td><td>${bAttr}提升·${bLv}</td></tr>
+    <tr><td class="label">技能属性：</td><td>${gSkill}</td></tr>
+    `;
+
+    return {quality, weaponName, color, desc, table2Html};
 }
 
 function renderTable1(list){
@@ -122,7 +305,7 @@ function renderTable1(list){
     document.getElementById("table1").innerHTML = h;
 }
 
-function drawRadar(names,values){
+function drawRadar(names,values, prePoints=null){
     const w=canvas.width, h=canvas.height, cx=w/2, cy=h/2;
     const maxR=Math.min(w,h)*0.38;
     const scale=maxR/101;
@@ -163,9 +346,8 @@ function drawRadar(names,values){
 
     for(let i=0;i<total;i++){
         const a=i*2*Math.PI/total;
-        const extraUp = (i === 2) ? 30 : 0;
         const lx=cx+(maxR+42)*Math.cos(a);
-        const ly=cy+(maxR+42)*Math.sin(a) - extraUp;
+        const ly=cy+(maxR+42)*Math.sin(a);
         
         const div=document.createElement("div");
         div.className="label-text";
@@ -181,12 +363,18 @@ function drawRadar(names,values){
         const radius = Math.random() * maxR * 0.8;
         return {x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle)};
     }
-    const p1 = randomPointInRadar();
-    const p2 = randomPointInRadar();
 
-    let sx=0,sy=0;values.forEach((v,i)=>{const a=i*2*Math.PI/total;sx+=v*Math.cos(a);sy+=v*Math.sin(a);});
-    const gx = cx + (sx/total)*scale;
-    const gy = cy + (sy/total)*scale;
+    let p1,p2,gx,gy;
+    if(prePoints){
+      p1=prePoints.p1; p2=prePoints.p2; gx=prePoints.gx; gy=prePoints.gy;
+    } else {
+      p1 = randomPointInRadar();
+      p2 = randomPointInRadar();
+      // 绿点 = 纯随机点
+      const gPoint = randomPointInRadar();
+      gx = gPoint.x;
+      gy = gPoint.y;
+    }
 
     document.getElementById("d1").style.left = p1.x+"px";
     document.getElementById("d1").style.top  = p1.y+"px";
@@ -195,141 +383,16 @@ function drawRadar(names,values){
     document.getElementById("d3").style.left = gx+"px";
     document.getElementById("d3").style.top  = gy+"px";
 
-    const deg=(x,y)=>{let d=Math.atan2(y-cy,x-cx)*180/Math.PI;return d<0?d+360:d;};
-    const len=(x,y)=>Math.hypot(x-cx,y-cy)/scale;
-    const lv=d=>d<=20?"小":d<=50?"中":"大";
-
-    const rDeg=deg(p1.x,p1.y), rLen=len(p1.x,p1.y), rLv=lv(rLen);
-    const bDeg=deg(p2.x,p2.y), bLen=len(p2.x,p2.y), bLv=lv(bLen);
-    const gDeg=deg(gx,gy);
-
-    const rAttr = attr5[Math.floor((rDeg/360)*5)%5];
-    const bAttr = attr12[Math.floor((bDeg/360)*12)%12];
-    const gSkill = skill14[Math.floor((gDeg/360)*14)%14];
-
-    let quality = "高纯";
-    if(rLv==="小" || bLv==="小") quality="净态";
-    if(rLv==="大" && bLv==="大") quality="无暇";
-
-    // ====================== 级别生成 ======================
-    let level;
-    if(quality === "净态"){
-      const arr = ["基础","中端","进阶","制式"];
-      level = arr[Math.floor(Math.random()*arr.length)];
-    } else if(quality === "高纯"){
-      const arr = ["高级","旗舰","客制化","珍贵","定制","古怪","高性能","上等","实验型","优质"];
-      level = arr[Math.floor(Math.random()*arr.length)];
-    } else {
-      const arr = ["经典","热销款","尖端","高端","新一代","特殊","传奇","特殊","实验型","复古","优质","独立","特别"];
-      level = arr[Math.floor(Math.random()*arr.length)];
-    }
-
-    // ====================== 前缀生成（研发方：names[1]） ======================
-    let prefixList;
-    const dev = names[1];
-    if(dev === "终末地工业"){
-      prefixList = ["工业","整合","O.B.J.","矩阵","荒野","塔罗斯","钢铁","寻路者","全自动","荧光","碾骨","脉冲","动火","蚀电","巡行信使","重装信使","矿场","管理员"];
-    } else if(dev === "宏山选剑局"){
-      prefixList = ["宏山","长河","霖雨","云雾","风雷","归舟","武陵","清波","首墩","景玉","点剑","壤流","50式应龙","纾难","长息","浊流","悬河","潮涌","落潮"];
-    } else if(dev === "梅什科工业"){
-      prefixList = ["骑士","典范","呼啸","赤盏","红松","授勋","散华","终点","M.I.警用","布道"];
-    } else if(dev === "北境重工支援所"){
-      prefixList = ["开拓","爆破","喷射","破坏","拓荒"];
-    } else if(dev === "罗德岛"){
-      prefixList = ["生物辅助","源石","协议","Lynx","文明","存续","预言家","博士"];
-    } else if(dev === "轻超域技术实验室"){
-      prefixList = ["轻超域","侵蚀"];
-    } else if(dev === "雷神工业"){
-      prefixList = ["黯淡","绯红","理性"];
-    } else if(dev === "巫术时刻"){
-      prefixList = ["破碎","悼亡","遗忘","熔铸"];
-    } else if(dev === "熔炉要塞"){
-      prefixList = ["白夜","淬火","天使","长路","坚城","使命","光荣"];
-    } else if(dev === "特里格拉夫军工厂"){
-      prefixList = ["天灾防护","阿伯莉"];
-    } else if(dev === "产自荒野"){
-      prefixList = ["九","十二","五","问"];
-    } else {
-      prefixList = ["简易","概念","自定义","测试型","集成化"];
-    }
-    const prefix = prefixList[Math.floor(Math.random() * prefixList.length)];
-
-    // ====================== 后缀生成（武器类型：names[0]） ======================
-    let suffixList;
-    const weaponType = names[0];
-    if(weaponType === "施术单元"){
-      suffixList = ["定位仪","分析仪","侵入核","接驳器","通信器","稳定盘","净芯","陀螺","印章","压缩核","单元","作品","星梦","术识","自由","诗歌","荒野","雷羽","新星","精神","12"];
-    } else if(weaponType === "手铳"){
-      suffixList = ["探针","紫光灯","定位信标","传动轮","增压轮","暴君","领航者","告别","长路","守卫","艺术","5"];
-    } else if(weaponType === "单手剑"){
-      suffixList = ["短刀","短刃","刺刃","记忆","火焰","火炬","新星","声名","切割器","之愿","表彰","威势","之至","轻芒","之问","3.0","铸造者","余音","浪潮","之锋","11"];
-    } else if(weaponType === "双手剑"){
-      suffixList = ["切割炬","扳手","冰锥","现象","重荷","之声","之轻","之探","行者","零点一","7"];
-    } else if(weaponType === "长柄武器"){
-      suffixList = ["君王","之勇","之重","精品","之引","尖峰","正义","杀手","道标","77"];
-    } else {
-      suffixList = ["之物","之人","使者","之器","之名","1.0","2.0"];
-    }
-    const suffix = suffixList[Math.floor(Math.random() * suffixList.length)];
-
-    // ====================== 武器名称颜色 ======================
-    let color;
-    if(quality === "无暇") color = "#dc3545";
-    else if(quality === "高纯") color = "#ffc107";
-    else if(quality === "净态") color = "#8a2be2";
-    else color = "#222";
-
-    // ====================== 渲染名称 ======================
-    const weaponNameEl = document.getElementById("weaponName");
-    weaponNameEl.innerText = prefix + suffix;
-    weaponNameEl.style.color = color;
-
-    // ====================== 数值排行（第3~8项：索引2~7） ======================
-    const items = [];
-    for(let i=2;i<=7;i++){
-      items.push({
-        title: titles[i],
-        value: values[i],
-        name: names[i],
-        index: i
-      });
-    }
-    items.sort((a,b)=>{
-      if(b.value !== a.value) return b.value - a.value;
-      return a.index - b.index;
-    });
-    const top1 = items[0];
-    const top2 = items[1];
-    const top3 = items[2];
-
-    // ====================== 描述文本 ======================
-    const desc = `由${names[1]}研发设计的${level}${names[0]}，${top1.title}为${top1.name}，${top2.title}为${top2.name}，${top3.title}为${top3.name}。`;
-    document.getElementById("desc").innerText = desc;
-
-    // ====================== 表格 ======================
-    document.getElementById("table2").innerHTML = `
-    <tr><td class="label">品质：</td><td>${quality}</td></tr>
-    <tr><td class="label">基础属性：</td><td>${rAttr}提升·${rLv}</td></tr>
-    <tr><td class="label">附加属性：</td><td>${bAttr}提升·${bLv}</td></tr>
-    <tr><td class="label">技能属性：</td><td>${gSkill}</td></tr>
-    `;
+    return {p1,p2,gx,gy};
 }
 
 function downloadImage(){
-  const target = document.getElementById("fullPage");
-  html2canvas(target, {
-    useCORS: true,
-    scale: 2,
-    backgroundColor: "#ffffff"
-  }).then(img => {
-    const link = document.createElement("a");
-    link.download = "终末地专武蓝图.png";
-    link.href = img.toDataURL("image/png");
-    link.click();
+  html2canvas(document.getElementById("fullPage"),{useCORS:true,scale:2,backgroundColor:"#fff"}).then(img=>{
+    const a=document.createElement("a");a.download="终末地专武蓝图.png";a.href=img.toDataURL("image/png");a.click();
   });
 }
 
-run();
+runSingle();
 </script>
 </body>
 </html>
